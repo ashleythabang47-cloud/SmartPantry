@@ -1,6 +1,7 @@
 package com.example.smartpantry.ui;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -55,11 +56,36 @@ public class PantryListActivity extends AppCompatActivity
     }
 
     /** Reload from the database every time the screen becomes visible again,
-     *  so changes made in the Add/Edit screen appear when the user returns. */
+     *  so changes made in the Add/Edit screen appear when the user returns.
+     *  Also re-reads the Settings so alert changes apply straight away. */
     @Override
     protected void onResume() {
         super.onResume();
+
+        SharedPreferences prefs = getSharedPreferences(SettingsActivity.PREFS_NAME, MODE_PRIVATE);
+        boolean alertsOn = prefs.getBoolean(SettingsActivity.KEY_ALERTS, true);
+        int days = prefs.getInt(SettingsActivity.KEY_DAYS, 3);
+        adapter.setExpiryAlerts(alertsOn, days);
+
         loadItems();
+        if (alertsOn) showExpiryReminder(days);
+    }
+
+    /** Shows a short reminder if any ingredient is expired or expiring soon. */
+    private void showExpiryReminder(int days) {
+        int count = 0;
+        for (PantryItem item : dbHelper.getAllItems()) {
+            if (item.expiryDate != null && !item.expiryDate.isEmpty()
+                    && PantryAdapter.daysUntil(item.expiryDate) <= days) {
+                count++;
+            }
+        }
+        if (count > 0) {
+            Toast.makeText(this, count + (count == 1
+                    ? " ingredient is expired or expiring soon"
+                    : " ingredients are expired or expiring soon"),
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     private void loadItems() {
@@ -112,6 +138,9 @@ public class PantryListActivity extends AppCompatActivity
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.action_suggested) {
             startActivity(new Intent(this, SuggestedRecipesActivity.class));
+            return true;
+        } else if (item.getItemId() == R.id.action_settings) {
+            startActivity(new Intent(this, SettingsActivity.class));
             return true;
         }
         return super.onOptionsItemSelected(item);
