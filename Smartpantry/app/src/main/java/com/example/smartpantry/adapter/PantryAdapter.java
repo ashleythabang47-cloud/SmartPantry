@@ -32,7 +32,9 @@ public class PantryAdapter extends RecyclerView.Adapter<PantryAdapter.ViewHolder
         void onDelete(PantryItem item);
     }
 
-    private static final int EXPIRING_SOON_DAYS = 3;
+    // Set from the Settings screen (see setExpiryAlerts)
+    private boolean alertsEnabled = true;
+    private int alertDays = 3;
 
     private final List<PantryItem> items = new ArrayList<>();
     private final OnItemActionListener listener;
@@ -46,6 +48,12 @@ public class PantryAdapter extends RecyclerView.Adapter<PantryAdapter.ViewHolder
         items.clear();
         items.addAll(newItems);
         notifyDataSetChanged();
+    }
+
+    /** Applies the user's Settings: whether to highlight, and the warning window. */
+    public void setExpiryAlerts(boolean enabled, int days) {
+        this.alertsEnabled = enabled;
+        this.alertDays = days;
     }
 
     @NonNull
@@ -71,7 +79,7 @@ public class PantryAdapter extends RecyclerView.Adapter<PantryAdapter.ViewHolder
             if (daysLeft < 0) {
                 holder.tvExpiry.setText("Expired: " + item.expiryDate);
                 holder.tvExpiry.setTextColor(Color.RED);
-            } else if (daysLeft <= EXPIRING_SOON_DAYS) {
+            } else if (alertsEnabled && daysLeft <= alertDays) {
                 holder.tvExpiry.setText("Expires soon: " + item.expiryDate);
                 holder.tvExpiry.setTextColor(Color.parseColor("#E65100")); // orange
             } else {
@@ -95,7 +103,7 @@ public class PantryAdapter extends RecyclerView.Adapter<PantryAdapter.ViewHolder
     }
 
     /** Whole days from today until the given yyyy-MM-dd date (negative if past). */
-    private long daysUntil(String dateText) {
+    public static long daysUntil(String dateText) {
         try {
             SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
             Date expiry = fmt.parse(dateText);
